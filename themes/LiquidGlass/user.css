@@ -1,0 +1,379 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   LiquidGlass — Spotify chrome in the shared language of Spicy Lyrics and
+   Wave Player.
+
+   Tokens are lifted from the two sources rather than invented:
+     Spicy Lyrics  src/css/tokens.css  — materials, liquid edges, cast shadows
+     Wave Player   waveplayer.js :585  — glass tints, text ramp, base colour
+
+   Scope rule: this file styles Spotify's own chrome only. Spicy Lyrics'
+   fullscreen page and Wave Player's PiP window carry their own complete CSS,
+   so every selector here is kept away from them — see the guards at the end.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+    /* ─── Surfaces ──────────────────────────────────────────────────────── */
+    --lg-base:        #0a0a0c;
+    --lg-elevated:    rgba(28, 28, 32, 0.88);
+    --lg-tint:        rgba(255, 255, 255, 0.06);
+    --lg-tint-hover:  rgba(255, 255, 255, 0.10);
+    --lg-glass:       rgba(255, 255, 255, 0.07);
+    --lg-glass-hi:    rgba(255, 255, 255, 0.13);
+
+    /* ─── Text ramp ─────────────────────────────────────────────────────── */
+    --lg-text-1: hsla(0, 0%, 100%, 0.92);
+    --lg-text-2: hsla(0, 0%, 100%, 0.60);
+    --lg-text-3: hsla(0, 0%, 100%, 0.35);
+
+    /* ─── Hairlines ─────────────────────────────────────────────────────── */
+    --lg-hairline:        rgba(255, 255, 255, 0.08);
+    --lg-hairline-strong: rgba(255, 255, 255, 0.14);
+
+    /* ─── Materials ─────────────────────────────────────────────────────── */
+    --lg-blur-regular: blur(12px) saturate(1.6) brightness(1.05);
+    --lg-blur-thick:   blur(24px) saturate(1.7) brightness(1.06);
+
+    /* ─── Liquid edge ───────────────────────────────────────────────────────
+       Bright top AND bottom: top is direct specular, bottom is refracted
+       bounce off the curved underside. No dark insets — a dark inset reads as
+       a shadow trapped inside the element and kills the glass cue. */
+    --lg-edge:
+        inset 0 1px 0 rgba(255, 255, 255, 0.28),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.10),
+        inset 0 -1px 0 rgba(255, 255, 255, 0.14);
+
+    /* ─── Cast shadow ───────────────────────────────────────────────────────
+       Tinted toward the page hue, never pure black. */
+    --lg-cast:      0 16px 40px -8px rgba(8, 10, 18, 0.55),
+                    0 4px 12px -2px rgba(8, 10, 18, 0.35);
+    --lg-cast-soft: 0 10px 24px -6px rgba(8, 10, 18, 0.42),
+                    0 2px 6px -1px rgba(8, 10, 18, 0.28);
+
+    /* ─── Radii — the two sources' scales reconciled ────────────────────── */
+    --lg-radius-sm:   8px;
+    --lg-radius-md:  12px;
+    --lg-radius-lg:  16px;
+    --lg-radius-pill: 999px;
+
+    /* ─── Motion ────────────────────────────────────────────────────────── */
+    --lg-ease: cubic-bezier(0.4, 0, 0.2, 1);
+    --lg-fast: 0.15s;
+    --lg-base-dur: 0.25s;
+}
+
+/* ═══ Ambient layer ═════════════════════════════════════════════════════════
+   Painted by theme.js from the current cover art. Wave Player's exact filter
+   (waveplayer.js:636) so the main window and the miniplayer wash match.
+   Fixed and behind everything; never intercepts a click. */
+#lg-ambient {
+    position: fixed;
+    inset: -10%;            /* overscan: blur must not reveal the edges */
+    z-index: 0;
+    pointer-events: none;
+    background-color: var(--lg-base);
+}
+
+#lg-ambient .lg-ambient-layer {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center;
+    filter: blur(52px) saturate(2) brightness(0.66);
+    opacity: 0;
+    transition: opacity 1.2s var(--lg-ease);
+    will-change: opacity;
+}
+
+#lg-ambient.lg-reduced .lg-ambient-layer { transition: none; }
+
+/* Spotify's shell paints an opaque near-black over the whole window. Clearing
+   it on the containers is what lets the ambient through — without this the
+   layer is painted and then completely covered. */
+.Root__top-container,
+.Root__main-view,
+.Root__nav-bar,
+.Root__globalNav,
+.main-view-container,
+.main-view-container__scroll-node,
+.main-yourLibraryX-library {
+    background-color: transparent !important;
+}
+
+/* Everything above the ambient needs a stacking context or it renders beneath. */
+.Root__top-container { position: relative; z-index: 1; }
+
+/* A scrim keeps text legible over a bright cover without killing the wash.
+   Without it, a white or neon album cover makes every label unreadable. */
+.Root__main-view::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: -1;
+    background: linear-gradient(180deg,
+        rgba(10, 10, 12, 0.55) 0%,
+        rgba(10, 10, 12, 0.78) 100%);
+}
+
+/* Sidebar and playbar become real glass now that there is something behind
+   them to refract. */
+.Root__nav-bar {
+    -webkit-backdrop-filter: var(--lg-blur-thick);
+    backdrop-filter: var(--lg-blur-thick);
+    box-shadow: inset -1px 0 0 var(--lg-hairline);
+}
+
+
+/* ─── Shell ─────────────────────────────────────────────────────────────────
+   Spotify paints several stacked containers; let the base colour show through
+   rather than repainting each one a slightly different near-black. */
+/* Base colour lives on #lg-ambient now; these containers stay transparent so
+   the wash shows through. See the ambient block above. */
+
+/* ─── Sidebar ─────────────────────────────────────────────────────────────── */
+.Root__nav-bar .main-yourLibraryX-libraryRootlist,
+.Root__nav-bar > div {
+    background-color: transparent;
+}
+
+.main-yourLibraryX-listItem .main-useDropTarget-base,
+.main-yourLibraryX-library li a {
+    border-radius: var(--lg-radius-md);
+    transition: background-color var(--lg-fast) var(--lg-ease);
+}
+
+.main-yourLibraryX-listItem .main-useDropTarget-base:hover,
+.main-yourLibraryX-library li a:hover {
+    background-color: var(--lg-tint);
+}
+
+/* Active location must be visible without relying on colour alone, so it gets
+   a tint plus a brighter hairline rather than an accent fill. */
+.main-yourLibraryX-library li a[aria-current="page"],
+.main-yourLibraryX-library li [aria-selected="true"] {
+    background-color: var(--lg-tint-hover);
+    box-shadow: inset 0 0 0 1px var(--lg-hairline-strong);
+}
+
+/* ─── Cards ─────────────────────────────────────────────────────────────────
+   Hairline + cast, no fill change on hover: the artwork is the colour, the
+   chrome stays out of its way. */
+.main-card-card,
+.main-entityHeader-container .main-entityHeader-imageContainer {
+    border-radius: var(--lg-radius-md);
+}
+
+.main-card-card {
+    background-color: var(--lg-elevated);
+    box-shadow: 0 0 0 1px var(--lg-hairline);
+    transition: box-shadow var(--lg-base-dur) var(--lg-ease),
+                transform var(--lg-base-dur) var(--lg-ease);
+}
+
+.main-card-card:hover {
+    box-shadow: var(--lg-cast-soft), 0 0 0 1px var(--lg-hairline-strong);
+    /* transform only — animating box positions would cost layout. */
+    transform: translateY(-2px);
+}
+
+.main-cardImage-image,
+.main-image-image {
+    border-radius: var(--lg-radius-sm);
+}
+
+/* ─── Track rows ────────────────────────────────────────────────────────── */
+.main-trackList-trackListRow {
+    border-radius: var(--lg-radius-sm);
+    transition: background-color var(--lg-fast) var(--lg-ease);
+}
+
+.main-trackList-trackListRow:hover,
+.main-trackList-trackListRow:focus-within {
+    background-color: var(--lg-tint);
+}
+
+.main-trackList-selected,
+.main-trackList-trackListRow[aria-selected="true"] {
+    background-color: var(--lg-tint-hover);
+}
+
+/* ─── Now playing bar ───────────────────────────────────────────────────────
+   The one genuine glass surface in Spotify's chrome, so it carries the full
+   material: thick blur, liquid edge, cast shadow. */
+.Root__now-playing-bar .main-nowPlayingBar-nowPlayingBar {
+    background: var(--lg-elevated);
+    -webkit-backdrop-filter: var(--lg-blur-thick);
+    backdrop-filter: var(--lg-blur-thick);
+    box-shadow: var(--lg-edge), var(--lg-cast);
+    border-top: 1px solid var(--lg-hairline);
+}
+
+.main-nowPlayingWidget-coverArt .main-image-image,
+.main-nowPlayingWidget-coverArt .main-trackInfo-container img {
+    border-radius: var(--lg-radius-sm);
+    box-shadow: 0 6px 18px rgba(8, 10, 18, 0.55),
+                0 0 0 0.5px rgba(255, 255, 255, 0.12);
+}
+
+/* ─── Progress and volume ───────────────────────────────────────────────────
+   White, not green. Wave Player's own bar is white for the same reason: the
+   album art already owns the colour channel. */
+.x-progressBar-fillColor,
+.progress-bar__fg,
+.x-volume-progressBarBg > div > div {
+    background-color: rgba(255, 255, 255, 0.90);
+}
+
+.x-progressBar-background,
+.progress-bar__bg {
+    background-color: rgba(255, 255, 255, 0.20);
+}
+
+.x-progressBar-sliderArea:hover .x-progressBar-fillColor {
+    background-color: #ffffff;
+}
+
+/* ─── Controls ──────────────────────────────────────────────────────────── */
+[data-testid="control-button-playpause"],
+[data-testid="play-button"],
+.player-controls__buttons button {
+    transition: transform var(--lg-fast) var(--lg-ease),
+                background-color var(--lg-fast) var(--lg-ease);
+}
+
+[data-testid="control-button-playpause"] {
+    background-color: var(--lg-text-1);
+    box-shadow: var(--lg-edge);
+}
+
+/* Scale feedback on press, bounded so it can never shift surrounding layout. */
+[data-testid="control-button-playpause"]:active,
+[data-testid="play-button"]:active,
+.player-controls__buttons button:active {
+    transform: scale(0.95);
+}
+
+/* ─── Buttons ───────────────────────────────────────────────────────────── */
+button.Button-sc-qlcn5g-0[data-encore-id="buttonPrimary"],
+[data-encore-id="buttonPrimary"] {
+    border-radius: var(--lg-radius-pill);
+    box-shadow: var(--lg-edge);
+}
+
+[data-encore-id="buttonSecondary"],
+[data-encore-id="buttonTertiary"] {
+    border-radius: var(--lg-radius-pill);
+    background-color: var(--lg-tint);
+    box-shadow: inset 0 0 0 1px var(--lg-hairline);
+}
+
+[data-encore-id="buttonSecondary"]:hover,
+[data-encore-id="buttonTertiary"]:hover {
+    background-color: var(--lg-tint-hover);
+}
+
+/* ─── Top bar ───────────────────────────────────────────────────────────── */
+.main-topBar-background {
+    background-color: rgba(10, 10, 12, 0.72) !important;
+    -webkit-backdrop-filter: var(--lg-blur-regular);
+    backdrop-filter: var(--lg-blur-regular);
+    border-bottom: 1px solid var(--lg-hairline);
+}
+
+.main-topBar-historyButtons .main-topBar-button {
+    background-color: var(--lg-tint);
+    border-radius: var(--lg-radius-pill);
+}
+
+/* ─── Context menus, modals, tooltips ───────────────────────────────────── */
+#context-menu,
+[id^="context-menu"],
+.GenericModal__overlay .GenericModal,
+.main-tooltip-container {
+    background: var(--lg-elevated);
+    -webkit-backdrop-filter: var(--lg-blur-thick);
+    backdrop-filter: var(--lg-blur-thick);
+    border-radius: var(--lg-radius-lg);
+    box-shadow: var(--lg-edge), var(--lg-cast);
+}
+
+#context-menu li button,
+[id^="context-menu"] li button {
+    border-radius: var(--lg-radius-sm);
+}
+
+#context-menu li button:hover,
+[id^="context-menu"] li button:hover {
+    background-color: var(--lg-tint-hover);
+}
+
+/* Blur behind a modal signals "the background is dismissable", which is the
+   only job blur has here — it is not decoration. */
+.GenericModal__overlay {
+    background-color: rgba(0, 0, 0, 0.55);
+    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
+}
+
+/* ─── Focus ─────────────────────────────────────────────────────────────────
+   Never remove the ring; make it legible against the near-black base. */
+*:focus-visible {
+    outline: 2px solid rgba(255, 255, 255, 0.85);
+    outline-offset: 2px;
+    border-radius: var(--lg-radius-sm);
+}
+
+/* ─── Scrollbars ────────────────────────────────────────────────────────── */
+.os-scrollbar-handle,
+::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.16) !important;
+    border-radius: var(--lg-radius-pill);
+}
+
+.os-scrollbar-handle:hover,
+::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(255, 255, 255, 0.28) !important;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+/* ─── Playbar button row ────────────────────────────────────────────────────
+   Spicy Lyrics' fullscreen button and the miniplayer button Wave Player claims
+   both live here. Sizing is owned by fix-playbar-overlap.js so there is a
+   single source of truth; this only supplies the shared affordance. */
+.main-nowPlayingBar-extraControls button {
+    border-radius: var(--lg-radius-sm);
+    transition: background-color var(--lg-fast) var(--lg-ease);
+}
+
+.main-nowPlayingBar-extraControls button:hover {
+    background-color: var(--lg-tint);
+}
+
+/* ─── Hands off ─────────────────────────────────────────────────────────────
+   Spicy Lyrics' fullscreen page ships a complete, self-contained design
+   system. Anything inherited from here would fight it, so reset the inherited
+   surface treatment at its boundary and let it own everything inside.
+   Wave Player needs no guard: its PiP window is a separate document that never
+   sees this stylesheet. */
+#SpicyLyricsPage,
+#SpicyLyricsPage * {
+    backdrop-filter: none;
+}
+
+#SpicyLyricsPage .main-trackList-trackListRow:hover {
+    background-color: transparent;
+}
+
+/* ─── Reduced motion ────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+    .main-card-card,
+    .main-card-card:hover,
+    [data-testid="control-button-playpause"],
+    .player-controls__buttons button {
+        transition: none;
+        transform: none;
+    }
+}
