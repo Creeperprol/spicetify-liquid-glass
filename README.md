@@ -63,11 +63,11 @@ says Windows-only; it works on macOS. [`themes/LiquidGlass`](themes/LiquidGlass)
 here is a simpler alternative built from Spicy Lyrics' and Wave Player's own
 token files.
 
-**4. The glue** — both files from [`extensions/`](extensions/), then:
+**4. The glue** — the files from [`extensions/`](extensions/), then:
 
 ```ini
 # ~/.config/spicetify/config-xpui.ini
-extensions   = fix-playbar-overlap.js|waveplayer.js|wave-spicy-compat.js|spicy-lyrics.js
+extensions   = adblock.js|fix-playbar-overlap.js|waveplayer.js|wave-spicy-compat.js|spicy-lyrics.js
 current_theme = IOS26.EDAWARD
 color_scheme  = dark
 ```
@@ -75,6 +75,29 @@ color_scheme  = dark
 ```sh
 spicetify apply
 ```
+
+## Ad blocking
+
+[`extensions/adblock.js`](extensions/adblock.js) is optional and independent of
+the rest. It works in three layers, because Spotify serves ads three ways:
+
+1. **Product state.** It overrides the `ads` key to `"0"`. The client then uses
+   its own toggle to turn the audio, video-takeover and display ad managers off.
+2. **Ad slots.** It clears each placement (`preroll`, `stream`, `hpto`,
+   `leaderboard`, the podcast midrolls and the rest) once, then again whenever
+   an ad lands in one.
+3. **CSS.** Display ads that still reach the page are hidden through their
+   `data-testid` hooks (`home-ads-container`, `embedded-ad`, ...).
+
+It finds Spotify's APIs by the methods they have (`putOverridesValues`,
+`clearSlot`), not by their path, because the paths change between builds. All
+names come from build 1.3.5.3058 on Windows. It does **not** pin its `<style>`
+to the end of head, for the reason in the next section. Check it is running in
+DevTools (`spicetify enable-devtools`): the console should show
+`[adblock] active`.
+
+It hides ads. It does not unlock Premium. Skip limits, shuffle-only mobile
+behaviour and audio quality stay as they are.
 
 ---
 
