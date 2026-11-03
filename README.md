@@ -51,9 +51,13 @@ Three upstreams, then two glue files. Nothing upstream is vendored here — see
 **2. Spicy Lyrics** — install `builds/v1.1/entrypoint.mjs` as
 `Extensions/spicy-lyrics.js`. Prefer this over the Marketplace install; see
 [Marketplace installs vanish](#marketplace-installs-vanish-silently). Note it
-is only a loader — it fetches the real ~1.4 MB bundle from
-`api.spicylyrics.org` at every startup, so it needs network and fails with its
-own modal if the service is down. Check with
+is only a loader. As of 2026-10-24 upstream's `builds/v1.1/entrypoint.mjs`
+is a one-line `import()` of `builds/main/entrypoint.mjs` through jsDelivr
+(cache-busted with `?t=Date.now()`); that main loader asks `api.spicylyrics.org`
+for the current version and then fetches the real ~1.4 MB bundle at every
+startup, with timeouts, backoff and a status check. So it needs network, and it
+reports its own failure if the service is down. Re-copy the file from upstream
+to pick up loader changes; the bundle itself updates on its own. Check with
 `curl https://api.spicylyrics.org/version`.
 
 **3. A theme.** [IOS26.EDAWARD](https://github.com/MattRvfl/IOS26.EDAWARD) is
