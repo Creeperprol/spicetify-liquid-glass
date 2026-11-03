@@ -17,7 +17,9 @@
     if (window.__liquidGlassAmbient) return;
     window.__liquidGlassAmbient = true;
 
-    while (!Spicetify?.Player?.data || !Spicetify?.Platform) {
+    // Wait for the player API only — not for a track. Waiting on Player.data
+    // meant a cold start with nothing queued never built the layer at all.
+    while (!Spicetify?.Player?.addEventListener || !Spicetify?.Platform) {
         await new Promise(r => setTimeout(r, 100));
     }
 
@@ -32,10 +34,19 @@
     const layers = [...root.children];
     let front = 0;
 
+    // Spotify hands out cover art as spotify:image:<id> URIs, which CSS and
+    // Image() cannot load. Map them to the CDN; pass https URLs through.
+    function toHttp(uri) {
+        if (!uri) return null;
+        const m = /^spotify:image:([0-9a-f]+)$/i.exec(uri);
+        return m ? `https://i.scdn.co/image/${m[1]}` : uri;
+    }
+
     function artOf(item) {
         const m = item?.metadata || {};
-        return m.image_xlarge_url || m.image_large_url || m.image_url ||
-               item?.album?.images?.slice(-1)[0]?.url || null;
+        return toHttp(m.image_xlarge_url || m.image_large_url || m.image_url ||
+                      item?.images?.slice(-1)[0]?.url ||
+                      item?.album?.images?.slice(-1)[0]?.url || null);
     }
 
     function paint() {
@@ -60,6 +71,12 @@
     // Spotify re-uses the same URL scheme for local files it cannot resolve, so
     // a failed load just leaves the previous wash up rather than blanking it.
     Spicetify.Player.addEventListener("songchange", paint);
+    // The player state arrives after the API does, and a paused cold start
+    // fires no songchange — so keep trying until the first wash is up.
+    const first = setInterval(() => {
+        if (layers.some(l => l.dataset.url)) return clearInterval(first);
+        paint();
+    }, 1000);
     paint();
 
     if (reduced) root.classList.add("lg-reduced");

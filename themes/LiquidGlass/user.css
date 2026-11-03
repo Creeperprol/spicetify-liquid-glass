@@ -88,41 +88,71 @@
 
 /* Spotify's shell paints an opaque near-black over the whole window. Clearing
    it on the containers is what lets the ambient through — without this the
-   layer is painted and then completely covered. */
+   layer is painted and then completely covered.
+
+   Spotify 1.3.6 dropped the Root__* layout classes and hashes the rest, so the
+   current build is targeted by stable ids, test ids and :has(). Found with a
+   probe that walked document.elementsFromPoint() and logged every opaque
+   layer; the legacy names stay below for older clients. */
+.Root > div:has(> #main-view),
+.Root > div:has(> #Desktop_LeftSidebar_Id),
+#main-view,
+#global-nav-bar,
+#Desktop_LeftSidebar_Id,
+#Desktop_LeftSidebar_Id nav > div,
+#Desktop_LeftSidebar_Id .YourLibraryX,
+#Desktop_PanelContainer_Id,
+#Desktop_PanelContainer_Id > div,
+div:has(> [data-testid="now-playing-bar"]),
+.main-view-container,
+.main-view-container__scroll-node,
+/* legacy (≤ 1.2.x) */
 .Root__top-container,
 .Root__main-view,
 .Root__nav-bar,
 .Root__globalNav,
-.main-view-container,
-.main-view-container__scroll-node,
 .main-yourLibraryX-library {
     background-color: transparent !important;
 }
 
+/* The panels become glass: a translucent fill plus blur over the wash, so they
+   still read as surfaces rather than text floating on a photo. */
+#main-view,
+#Desktop_LeftSidebar_Id,
+#Desktop_PanelContainer_Id,
+.Root__main-view,
+.Root__nav-bar {
+    background-color: rgba(10, 10, 12, 0.42) !important;
+    -webkit-backdrop-filter: var(--lg-blur-regular);
+    backdrop-filter: var(--lg-blur-regular);
+    box-shadow: var(--lg-edge);
+    border-radius: var(--lg-radius-md);
+}
+
 /* Everything above the ambient needs a stacking context or it renders beneath. */
+#main,
 .Root__top-container { position: relative; z-index: 1; }
 
 /* A scrim keeps text legible over a bright cover without killing the wash.
    Without it, a white or neon album cover makes every label unreadable. */
+#main-view::before,
 .Root__main-view::before {
     content: "";
     position: absolute;
     inset: 0;
     pointer-events: none;
     z-index: -1;
+    border-radius: inherit;
     background: linear-gradient(180deg,
-        rgba(10, 10, 12, 0.55) 0%,
-        rgba(10, 10, 12, 0.78) 100%);
+        rgba(10, 10, 12, 0.30) 0%,
+        rgba(10, 10, 12, 0.55) 100%);
 }
 
-/* Sidebar and playbar become real glass now that there is something behind
-   them to refract. */
-.Root__nav-bar {
+/* The playbar is the one full-width glass strip. */
+div:has(> [data-testid="now-playing-bar"]) {
     -webkit-backdrop-filter: var(--lg-blur-thick);
     backdrop-filter: var(--lg-blur-thick);
-    box-shadow: inset -1px 0 0 var(--lg-hairline);
 }
-
 
 /* ─── Shell ─────────────────────────────────────────────────────────────────
    Spotify paints several stacked containers; let the base colour show through
@@ -200,6 +230,7 @@
 /* ─── Now playing bar ───────────────────────────────────────────────────────
    The one genuine glass surface in Spotify's chrome, so it carries the full
    material: thick blur, liquid edge, cast shadow. */
+[data-testid="now-playing-bar"],
 .Root__now-playing-bar .main-nowPlayingBar-nowPlayingBar {
     background: var(--lg-elevated);
     -webkit-backdrop-filter: var(--lg-blur-thick);
@@ -273,6 +304,7 @@ button.Button-sc-qlcn5g-0[data-encore-id="buttonPrimary"],
 }
 
 /* ─── Top bar ───────────────────────────────────────────────────────────── */
+#global-nav-bar,
 .main-topBar-background {
     background-color: rgba(10, 10, 12, 0.72) !important;
     -webkit-backdrop-filter: var(--lg-blur-regular);
